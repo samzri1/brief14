@@ -1,0 +1,123 @@
+variables:
+- name: BuildParameters.Dockerfile
+  value: '**/Dockerfile'
+trigger:
+  branches:
+    include:
+    - refs/heads/main
+resources:
+  repositories:
+  - repository: self
+    type: git
+    ref: refs/heads/main
+jobs:
+- job: Job_3
+  displayName: install
+  pool:
+    vmImage: ubuntu-20.04
+  steps:
+  - checkout: self
+    clean: true
+    fetchTags: false
+  - task: DockerInstaller@0
+    displayName: Install Docker 20.10.21
+    inputs:
+      dockerVersion: 20.10.21
+  - task: TerraformInstaller@1
+    displayName: Install Terraform latest
+- job: Job_4
+  displayName: Docker
+  dependsOn: Job_3
+  pool:
+    vmImage: ubuntu-20.04
+  steps:
+  - checkout: self
+    clean: true
+    fetchTags: false
+  - task: Docker@2
+    displayName: buildAndPush
+    inputs:
+      containerRegistry: bee4636f-4e31-495f-a58a-3464acce65e0
+      repository: samzri/brief14
+      Dockerfile: $(BuildParameters.Dockerfile)
+- job: Job_1
+  displayName: terraform stage
+  dependsOn: Job_4
+  pool:
+    vmImage: ubuntu-20.04
+  steps:
+  - checkout: self
+    clean: true
+    fetchTags: false
+  - task: TerraformTaskV4@4
+    displayName: 'Terraform : init stage'
+    inputs:
+      workingDirectory: stagingEnvironment
+      backendServiceArm: 7de4ce23-c578-4a21-b5f9-724b1058c01c
+      backendAzureRmResourceGroupName: samresstock
+      backendAzureRmStorageAccountName: samtsock
+      backendAzureRmContainerName: sotckdbsam
+      backendAzureRmKey: tf/terraform.tfstate
+  - task: TerraformTaskV4@4
+    displayName: 'Terraform : plan stage'
+    inputs:
+      command: plan
+      workingDirectory: stagingEnvironment
+      environmentServiceNameAzureRM: 7de4ce23-c578-4a21-b5f9-724b1058c01c
+      backendServiceArm: 7de4ce23-c578-4a21-b5f9-724b1058c01c
+      backendAzureRmResourceGroupName: samresstock
+      backendAzureRmStorageAccountName: samtsock
+      backendAzureRmContainerName: sotckdbsam
+      backendAzureRmKey: tf/terraform.tfstate
+  - task: TerraformTaskV4@4
+    displayName: 'Terraform : apply stage'
+    inputs:
+      command: apply
+      workingDirectory: stagingEnvironment
+      environmentServiceNameAzureRM: 7de4ce23-c578-4a21-b5f9-724b1058c01c
+      backendServiceArm: 7de4ce23-c578-4a21-b5f9-724b1058c01c
+      backendAzureRmResourceGroupName: samresstock
+      backendAzureRmStorageAccountName: samtsock
+      backendAzureRmContainerName: sotckdbsam
+      backendAzureRmKey: tf/terraform.tfstate
+- job: Job_2
+  displayName: terraform prod
+  dependsOn: Job_1
+  pool:
+    vmImage: ubuntu-20.04
+  steps:
+  - checkout: self
+    clean: true
+    fetchTags: false
+  - task: TerraformTaskV4@4
+    displayName: 'Terraform : init prod'
+    inputs:
+      workingDirectory: ProdEnvironment
+      backendServiceArm: 7de4ce23-c578-4a21-b5f9-724b1058c01c
+      backendAzureRmResourceGroupName: samresstock
+      backendAzureRmStorageAccountName: samtsock
+      backendAzureRmContainerName: sotckdbsam
+      backendAzureRmKey: tf/terraform.tfstate
+  - task: TerraformTaskV4@4
+    displayName: 'Terraform : plan prod'
+    inputs:
+      command: plan
+      workingDirectory: ProdEnvironment
+      environmentServiceNameAzureRM: 7de4ce23-c578-4a21-b5f9-724b1058c01c
+      backendServiceArm: 7de4ce23-c578-4a21-b5f9-724b1058c01c
+      backendAzureRmResourceGroupName: samresstock
+      backendAzureRmStorageAccountName: samtsock
+      backendAzureRmContainerName: sotckdbsam
+      backendAzureRmKey: tf/terraform.tfstate
+  - task: TerraformTaskV4@4
+    displayName: 'Terraform : apply prod'
+    inputs:
+      command: apply
+      workingDirectory: ProdEnvironment
+      environmentServiceNameAzureRM: 7de4ce23-c578-4a21-b5f9-724b1058c01c
+      backendServiceArm: 7de4ce23-c578-4a21-b5f9-724b1058c01c
+      backendAzureRmResourceGroupName: samresstock
+      backendAzureRmStorageAccountName: samtsock
+      backendAzureRmContainerName: sotckdbsam
+      backendAzureRmKey: tf/terraform.tfstate
+...
